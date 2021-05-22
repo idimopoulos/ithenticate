@@ -1,0 +1,15 @@
+{
+    "name": "idimopoulos/ithenticate",
+    "description": "An module that integrates the JMS and CMS systems to the iThenticate service.",
+    "type": "drupal-module",
+    "require": {
+        "bsobbe/ithenticate": "*",
+        "phpxmlrpc/phpxmlrpc": "4.0"
+    },
+    "authors": [
+        {
+            "name": "Ilias Dimopoulos",
+            "email": "idimopoulos@hotmail.com"
+        }
+    ]
+}

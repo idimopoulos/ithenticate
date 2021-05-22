@@ -1,0 +1,58 @@
+<?php
+
+/**
+ * @file
+ * Contains installation functions and hooks for the ithenticate module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function ithenticate_schema() {
+  $schema = [];
+
+  $schema['ithenticate_documents'] = [
+    'description' => 'Stores information about iThenticate documents.',
+    'fields' => [
+      'entity_type' => [
+        'description' => 'The entity type.',
+        'type' => 'varchar',
+        'length' => '50',
+        'not null' => TRUE,
+      ],
+      'bundle' => [
+        'description' => 'The bundle.',
+        'type' => 'varchar',
+        'length' => '50',
+        'not null' => TRUE,
+      ],
+      'entity_id' => [
+        'description' => 'The entity ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'ithenticate_document_id' => [
+        'description' => 'The document ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ],
+      'ithenticate_report_id' => [
+        'description' => 'The report ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ],
+      'ithenticate_report_url' => [
+        'description' => 'The report URL.',
+        'type' => 'varchar',
+        'length' => '1024',
+        'not null' => FALSE,
+      ],
+    ],
+    'primary key' => ['entity_type', 'bundle', 'entity_id'],
+  ];
+
+  return $schema;
+}

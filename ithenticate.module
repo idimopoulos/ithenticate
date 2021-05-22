@@ -1,0 +1,162 @@
+<?php
+
+/**
+ * @file
+ * Contains functions and hooks for the ithenticate module.
+ */
+
+use Drupal\ithenticate\entities\IthenticateDocument;
+use Drupal\ithenticate\IthenticateApiRequest;
+use Drupal\ithenticate\IthenticateRequestWrapper;
+use Drupal\ithenticate\Methods\SubmitDocument;
+
+/**
+ * Implements hook_menu().
+ */
+function ithenticate_menu() {
+  $items = [];
+
+  $items['admin/config/services/ithenticate'] = [
+    'title' => t('iThenticate'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => ['ithenticate_admin_settings'],
+    'access arguments' => ['administer ithenticate settings'],
+    'file' => 'ithenticate.admin.inc',
+  ];
+
+  $items['node/%node/ithenticate'] = [
+    'title' => t('iThenticate'),
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => ['ithenticate_portal', 1],
+    'access callback' => 'ithenticate_portal_access',
+    'access arguments' => [1],
+  ];
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function ithenticate_permission() {
+  return [
+    'administer ithenticate settings' => [
+      'title' => 'Administer iThenticate settings',
+    ],
+    'access ithenticate portal' => [
+      'title' => 'Access the ithenticate page for each allowed node',
+    ]
+  ];
+}
+
+/**
+ * Access callback for the iThenticate portal page.
+ *
+ * @param object $node
+ *   The node object.
+ *
+ * @return bool
+ *   Whether the user has access.
+ */
+function ithenticate_portal_access($node) {
+  return $node->type === 'paper' && user_access('access ithenticate portal');
+}
+
+/**
+ * Callback for the iThenticate portal page.
+ *
+ * @param array $form
+ *   The form array.
+ * @param array $form_state
+ *   The form state array.
+ */
+function ithenticate_portal($form, &$form_state, $node) {
+  _validate_ithenticate_is_configured();
+
+  $form_state['#node'] = $node;
+  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
+  if (empty($document)) {
+    // Shows a form that allows the user to submit a document.
+    $form['help'] = [
+      '#type' => 'item',
+      '#markup' => t('There are no records for the given document. Press below to submit for plagiarism check.'),
+    ];
+
+    $form['submit'] = [
+      '#type' => 'submit',
+      '#value' => t('Submit to iThenticate'),
+      '#validate' => ['ithenticate_portal_submit_document_validate'],
+      '#submit' => ['ithenticate_portal_submit_document'],
+    ];
+  }
+  elseif (empty($document->getIthenticateReportUrl())) {
+    $form['help'] = [
+      '#type' => 'item',
+      '#markup' => t("The report has been created. Please, go to <a href=':link' target='_blank'>iThenticate report page</a> for further details.", [
+        ':link' => $document->getIthenticateReportUrl(),
+      ]),
+    ];
+
+    $form['submit'] = [
+      '#type' => 'submit',
+      '#value' => t('Try to retrieve data'),
+      '#submit' => ['ithenticate_portal_submit_fetch_results_submit'],
+    ];
+  }
+
+  if (!empty($document)) {
+    $form_state['document'] = $document;
+  }
+
+  return $form;
+}
+
+/**
+ * Submits the document to the iThenticate service.
+ *
+ * @param array $form
+ *   The form array.
+ * @param array $form_state
+ *   The form_state array.
+ */
+function ithenticate_portal_submit_document($form, &$form_state) {
+  $node = $form_state['#node'];
+
+  // The following ID is completely random.
+  $document = new IthenticateDocument('node', $node->type, $node->nid);
+  $document->save();
+
+  $service = new IthenticateRequestWrapper();
+  $document = $service->submitDocument($node);
+  if ($document->getIthenticateDocumentId()) {
+    // If we are here, the document has been submitted and a document ID is set.
+    if ($service->checkIsDocumentReportPending($document->getIthenticateDocumentId())) {
+      drupal_set_message(t('The report is being generated. Please, come back later.'));
+    }
+    else {
+      $service->fetchDocumentReportId($document);
+      $service->fetchDocumentReportUrl($document);
+    }
+  }
+}
+
+/**
+ * Checks whether config settings have been set.
+ *
+ * @return bool
+ *   Whether the iThenticate settings are filled.
+ */
+function _validate_ithenticate_is_configured() {
+  $username = variable_get('ithenticate_user_name', '');
+  $password = variable_get('ithenticate_user_pass', '');
+  $api_url = variable_get('ithenticate_api_url', '');
+  $folder_number = variable_get('ithenticate_submission_folder_number', '');
+
+  if (empty($username) || empty($password) || empty($api_url) || empty($folder_number)) {
+    drupal_set_message(t('Please, first configure the iThenticate settings in the <a href="/admin/config/platform/ithenticate">settings page</a>.'), 'error');
+    return FALSE;
+  }
+
+  return TRUE;
+}
