@@ -51,7 +51,7 @@ class IthenticateRequestWrapper {
   /**
    * Submits a document to the service.
    *
-   * @param object|null $node
+   * @param object $node
    *   The paper node object that will be submitted to the service.
    *
    * @return \Drupal\ithenticate\entities\IthenticateDocument $document
@@ -75,11 +75,32 @@ class IthenticateRequestWrapper {
       throw new \RuntimeException('Failed to load the file for node ' . $node->nid);
     }
 
-    // @todo Use the author data instead of the user data when available.
-    $user = user_load($node->uid);
+    $first_name = NULL;
+    $last_name = NULL;
+    if (isset($node->field_paper_authors) && module_exists('field_collection')) {
+      // For CMS. When JMS also upgrades to explicit authors, this should be
+      // universal.
+      foreach ($node->field_paper_authors[LANGUAGE_NONE] as $item_data) {
+        $author = field_collection_item_load($item_data['item_id']);
+        if (empty($author)) {
+          continue;
+        }
+        foreach ($author->field_author_type[LANGUAGE_NONE] as $author_type) {
+          if ($author_type['value'] === 'corresponding') {
+            $first_name = $author->field_author_first_name[LANGUAGE_NONE][0]['value'];
+            $last_name = $author->field_author_last_name[LANGUAGE_NONE][0]['value'];
+            break 2;
+          }
+        }
+      }
+    }
+    else {
+      $user = user_load($node->uid);
+      $first_name = $user->field_user_name[LANGUAGE_NONE][0]['value'];
+      $last_name = $user->field_user_surname[LANGUAGE_NONE][0]['value'];
+    }
+
     $title = $node->title;
-    $first_name = $user->field_user_name[LANGUAGE_NONE][0]['value'];
-    $last_name = $user->field_user_surname[LANGUAGE_NONE][0]['value'];
     $filename = $file->filename;
     $file_contents = file_get_contents(drupal_realpath($file->uri));
     $folder_number = variable_get('ithenticate_submission_folder_number');
@@ -106,10 +127,10 @@ class IthenticateRequestWrapper {
     }
 
     if ($state['is_pending'] == 0) {
-      return TRUE;
+      return FALSE;
     }
 
-    return FALSE;
+    return TRUE;
   }
 
   /**

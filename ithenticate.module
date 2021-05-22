@@ -76,7 +76,7 @@ function ithenticate_portal($form, &$form_state, $node) {
 
   $form_state['#node'] = $node;
   $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
-  if (empty($document)) {
+  if (empty($document) || empty($document->getIthenticateDocumentId())) {
     // Shows a form that allows the user to submit a document.
     $form['help'] = [
       '#type' => 'item',
@@ -86,22 +86,28 @@ function ithenticate_portal($form, &$form_state, $node) {
     $form['submit'] = [
       '#type' => 'submit',
       '#value' => t('Submit to iThenticate'),
-      '#validate' => ['ithenticate_portal_submit_document_validate'],
       '#submit' => ['ithenticate_portal_submit_document'],
     ];
   }
-  elseif (empty($document->getIthenticateReportUrl())) {
+  elseif (empty($document->getIthenticateReportUrl()) && !empty($document->getIthenticateDocumentId())) {
     $form['help'] = [
       '#type' => 'item',
-      '#markup' => t("The report has been created. Please, go to <a href=':link' target='_blank'>iThenticate report page</a> for further details.", [
-        ':link' => $document->getIthenticateReportUrl(),
-      ]),
+      '#markup' => t('Click below to try and retrieve the report URL.'),
     ];
 
     $form['submit'] = [
       '#type' => 'submit',
       '#value' => t('Try to retrieve data'),
       '#submit' => ['ithenticate_portal_submit_fetch_results_submit'],
+    ];
+  }
+  elseif (!empty($document->getIthenticateReportUrl())) {
+    $form['help'] = [
+      '#type' => 'item',
+      // '#markup' => "<iframe src='{$document->getIthenticateReportUrl()}'></iframe>'",
+      '#markup' => t("The report has been created. Please, go to <a href='!link' target='_blank'>iThenticate report page</a> for further details.", [
+        '!link' => $document->getIthenticateReportUrl(),
+      ]),
     ];
   }
 
@@ -123,12 +129,33 @@ function ithenticate_portal($form, &$form_state, $node) {
 function ithenticate_portal_submit_document($form, &$form_state) {
   $node = $form_state['#node'];
 
-  // The following ID is completely random.
-  $document = new IthenticateDocument('node', $node->type, $node->nid);
-  $document->save();
-
   $service = new IthenticateRequestWrapper();
   $document = $service->submitDocument($node);
+  if ($document->getIthenticateDocumentId()) {
+    // If we are here, the document has been submitted and a document ID is set.
+    if ($service->checkIsDocumentReportPending($document->getIthenticateDocumentId())) {
+      drupal_set_message(t('The report is being generated. Please, come back later.'));
+    }
+    else {
+      $service->fetchDocumentReportId($document);
+      $service->fetchDocumentReportUrl($document);
+    }
+  }
+}
+
+/**
+ * Submits the document to the iThenticate service.
+ *
+ * @param array $form
+ *   The form array.
+ * @param array $form_state
+ *   The form_state array.
+ */
+function ithenticate_portal_submit_fetch_results_submit($form, &$form_state) {
+  $node = $form_state['#node'];
+  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
+
+  $service = new IthenticateRequestWrapper();
   if ($document->getIthenticateDocumentId()) {
     // If we are here, the document has been submitted and a document ID is set.
     if ($service->checkIsDocumentReportPending($document->getIthenticateDocumentId())) {
@@ -154,7 +181,7 @@ function _validate_ithenticate_is_configured() {
   $folder_number = variable_get('ithenticate_submission_folder_number', '');
 
   if (empty($username) || empty($password) || empty($api_url) || empty($folder_number)) {
-    drupal_set_message(t('Please, first configure the iThenticate settings in the <a href="/admin/config/platform/ithenticate">settings page</a>.'), 'error');
+    drupal_set_message(t('Please, first configure the iThenticate settings in the <a href="/admin/config/services/ithenticate">settings page</a>.'), 'error');
     return FALSE;
   }
 
