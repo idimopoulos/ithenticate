@@ -202,11 +202,11 @@ class IthenticateDocument {
    * @param int $document_id
    *   The document ID.
    *
-   * @return object|null
+   * @return \Drupal\ithenticate\entities\IthenticateDocument|null
    *   The loaded object or NULL if none are found.
    */
   public static function loadByIthenticateDocumentId(int $document_id) {
-    $document = self::loadSingleByProperties(['document_id' => $document_id]);
+    $document = self::loadSingleByProperties(['ithenticate_document_id' => $document_id]);
     if (empty($document)) {
       return NULL;
     }
@@ -224,7 +224,7 @@ class IthenticateDocument {
    *   The loaded object or NULL if none are found.
    */
   public static function loadByIthenticateReportId(int $report_id) {
-    $document = self::loadSingleByProperties(['report_id' => $report_id]);
+    $document = self::loadSingleByProperties(['ithenticate_report_id' => $report_id]);
     if (empty($document)) {
       return NULL;
     }

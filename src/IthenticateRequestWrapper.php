@@ -35,7 +35,6 @@ class IthenticateRequestWrapper {
       empty($username) ? variable_get('ithenticate_user_name') : $username,
       empty($password) ? variable_get('ithenticate_user_pass') : $password
     );
-    $this->service->setUrl(empty($url) ? variable_get('ithenticate_api_url') : $url);
   }
 
   /**
@@ -148,7 +147,7 @@ class IthenticateRequestWrapper {
       drupal_set_message(t('Failed to retrieve the document ID. Is the report still pending?'), 'error');
     }
     else {
-      $document->setIthenticateDocumentId($document_report_id);
+      $document->setIthenticateReportId($document_report_id);
       $document->save();
     }
     return $document;
@@ -164,7 +163,7 @@ class IthenticateRequestWrapper {
    *   The updated document.
    */
   public function fetchDocumentReportUrl($document) {
-    $document_report_url = $this->service->fetchDocumentReportUrl($document->getIthenticateDocumentId());
+    $document_report_url = $this->service->fetchDocumentReportUrl($document->getIthenticateReportId());
     if ($document_report_url === FALSE) {
       drupal_set_message(t('Failed to retrieve the document URL. Is the report still pending?'), 'error');
     }
