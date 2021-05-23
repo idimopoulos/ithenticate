@@ -40,6 +40,19 @@ function ithenticate_admin_settings(array $form, array &$form_state) {
     '#default_value' => variable_get('ithenticate_submission_folder_number', ''),
   ];
 
+  $form['ithenticate_send_email_on_success'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Send email'),
+    '#description' => t('Send email when the report URL is fetched automatically.'),
+    '#default_value' => variable_get('ithenticate_send_email_on_success'),
+  ];
+
+  $form['ithenticate_email_recipient'] = [
+    '#type' => 'textfield',
+    '#title' => 'Email recipient',
+    '#default_value' => variable_get('ithenticate_email_recipient'),
+  ];
+
   $form['test_api'] = [
     '#type' => 'submit',
     '#value' => t('Test API'),

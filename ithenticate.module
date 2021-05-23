@@ -177,13 +177,84 @@ function ithenticate_portal_submit_fetch_results_submit($form, &$form_state) {
 function _validate_ithenticate_is_configured() {
   $username = variable_get('ithenticate_user_name', '');
   $password = variable_get('ithenticate_user_pass', '');
-  $api_url = variable_get('ithenticate_api_url', '');
   $folder_number = variable_get('ithenticate_submission_folder_number', '');
 
-  if (empty($username) || empty($password) || empty($api_url) || empty($folder_number)) {
+  if (empty($username) || empty($password) || empty($folder_number)) {
     drupal_set_message(t('Please, first configure the iThenticate settings in the <a href="/admin/config/services/ithenticate">settings page</a>.'), 'error');
     return FALSE;
   }
 
   return TRUE;
+}
+
+
+
+/**
+ * Implements hook_cron().
+ */
+function ithenticate_cron() {
+  $queue = DrupalQueue::get('ithenticate_report_url');
+  if ($queue->numberOfItems()) {
+    return;
+  }
+
+  $document_ids = db_select('ithenticate_documents', 'i')
+    ->fields('i', ['ithenticate_document_id'])
+    ->isNotNull('ithenticate_document_id')
+    ->isNull('ithenticate_report_url')
+    ->execute()
+    ->fetchCol();
+
+  foreach ($document_ids as $document_id) {
+    $queue->createItem($document_id);
+  }
+}
+
+/**
+ * Implements hook_cron_queue_info().
+ */
+function ithenticate_cron_queue_info() {
+  $queues = [];
+  $queues['ithenticate_report_url'] = [
+    'worker callback' => 'ithenticate_report_url_fetch',
+    'time' => 30,
+  ];
+
+  return $queues;
+}
+
+/**
+ * Attempts to retrieve the report URL for a document.
+ *
+ * @param int $document_id
+ *   The document ID.
+ */
+function ithenticate_report_url_fetch($document_id) {
+  $document = IthenticateDocument::loadByIthenticateDocumentId($document_id);
+  if (!empty($document->getIthenticateReportUrl())) {
+    // It has been updated in the meantime. Nothing to do here.
+    return;
+  }
+
+  $service = new IthenticateRequestWrapper();
+  if ($service->checkIsDocumentReportPending($document->getIthenticateDocumentId())) {
+    // The document will be re-evaluated in a later cron run.
+    return;
+  }
+  else {
+    $service->fetchDocumentReportId($document);
+    $service->fetchDocumentReportUrl($document);
+
+    $send_email = variable_get('ithenticate_send_email_on_success', FALSE);
+    $recipient = variable_get('ithenticate_email_recipient', NULL);
+    if ($send_email && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+      $node = node_load($document->getEntityId());
+      // @todo: This should be a bit fancier.
+      mail(
+        $recipient,
+        "iThenticate report for {$node->field_paper_id[LANGUAGE_NONE][0]['value']}",
+        "A new iThenticate report has been generated. {$document->getIthenticateReportUrl()}"
+      );
+    }
+  }
 }
