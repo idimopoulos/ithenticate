@@ -52,6 +52,13 @@ class IthenticateDocument {
   protected $ithenticateReportUrl;
 
   /**
+   * The percent match.
+   *
+   * @var int
+   */
+  protected $percentMatch;
+
+  /**
    * IthenticateDocument constructor.
    *
    * @param string|null $entity_type
@@ -66,14 +73,17 @@ class IthenticateDocument {
    *   The report ID.
    * @param string|null $report_url
    *   The report URl.
+   * @param int|null $percent_match
+   *   The percent match.
    */
-  public function __construct(string $entity_type = NULL, string $bundle = NULL, int $entity_id = NULL, int $document_id = NULL, int $report_id = NULL, string $report_url = NULL) {
+  public function __construct(string $entity_type = NULL, string $bundle = NULL, int $entity_id = NULL, int $document_id = NULL, int $report_id = NULL, string $report_url = NULL, ?int $percent_match = NULL) {
     $this->entityType = $entity_type;
     $this->bundle = $bundle;
     $this->entityId = $entity_id;
     $this->ithenticateDocumentId = $document_id;
     $this->ithenticateReportId = $report_id;
     $this->ithenticateReportUrl = $report_url;
+    $this->percentMatch = $percent_match;
   }
 
   /**
@@ -197,6 +207,26 @@ class IthenticateDocument {
   }
 
   /**
+   * Returns the percent match.
+   *
+   * @return int
+   *   The percent match.
+   */
+  public function getPercentMatch(): ?int {
+    return $this->percentMatch;
+  }
+
+  /**
+   * Sets the percent match.
+   *
+   * @param int $percent_match
+   *   The percent match.
+   */
+  public function setPercentMatch(int $percent_match): void {
+    $this->percentMatch = $percent_match;
+  }
+
+  /**
    * Loads an IthenticateDocument by iThenticate document ID.
    *
    * @param int $document_id
@@ -211,7 +241,7 @@ class IthenticateDocument {
       return NULL;
     }
 
-    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url);
+    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url, $document->percent_match);
   }
 
   /**
@@ -229,7 +259,7 @@ class IthenticateDocument {
       return NULL;
     }
 
-    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url);
+    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url, $document->percent_match);
   }
 
   /**
@@ -255,7 +285,7 @@ class IthenticateDocument {
       return NULL;
     }
 
-    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url);
+    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url, $document->percent_match);
   }
 
   /**
@@ -305,6 +335,7 @@ class IthenticateDocument {
         'ithenticate_document_id' => $this->ithenticateDocumentId,
         'ithenticate_report_id' => $this->ithenticateReportId,
         'ithenticate_report_url' => $this->ithenticateReportUrl,
+        'percent_match' => $this->percentMatch,
       ])
       ->execute();
   }

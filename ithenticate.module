@@ -154,18 +154,10 @@ function ithenticate_portal_submit_document($form, &$form_state) {
 function ithenticate_portal_submit_fetch_results_submit($form, &$form_state) {
   $node = $form_state['#node'];
   $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
+  $service_wrapper = new IthenticateRequestWrapper();
 
-  $service = new IthenticateRequestWrapper();
-  if ($document->getIthenticateDocumentId()) {
-    // If we are here, the document has been submitted and a document ID is set.
-    if ($service->checkIsDocumentReportPending($document->getIthenticateDocumentId())) {
-      drupal_set_message(t('The report is being generated. Please, come back later.'));
-    }
-    else {
-      $service->fetchDocumentReportId($document);
-      $service->fetchDocumentReportUrl($document);
-    }
-  }
+  $service_wrapper->getReportData($document);
+  $document->save();
 }
 
 /**
@@ -216,7 +208,7 @@ function ithenticate_cron() {
 function ithenticate_cron_queue_info() {
   $queues = [];
   $queues['ithenticate_report_url'] = [
-    'worker callback' => 'ithenticate_report_url_fetch',
+    'worker callback' => 'ithenticate_report_download_data',
     'time' => 30,
   ];
 
@@ -229,27 +221,22 @@ function ithenticate_cron_queue_info() {
  * @param int $document_id
  *   The document ID.
  */
-function ithenticate_report_url_fetch($document_id) {
+function ithenticate_report_download_data($document_id) {
   $document = IthenticateDocument::loadByIthenticateDocumentId($document_id);
   if (!empty($document->getIthenticateReportUrl())) {
     // It has been updated in the meantime. Nothing to do here.
     return;
   }
 
-  $service = new IthenticateRequestWrapper();
-  if ($service->checkIsDocumentReportPending($document->getIthenticateDocumentId())) {
-    // The document will be re-evaluated in a later cron run.
-    return;
-  }
-  else {
-    $service->fetchDocumentReportId($document);
-    $service->fetchDocumentReportUrl($document);
+  $service_wrapper = new IthenticateRequestWrapper();
+  $service_wrapper->getReportData($document);
+  $document->save();
 
+  if (!empty($document->getIthenticateReportUrl())) {
     $send_email = variable_get('ithenticate_send_email_on_success', FALSE);
     $recipient = variable_get('ithenticate_email_recipient', NULL);
     if ($send_email && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
       $node = node_load($document->getEntityId());
-      // @todo: This should be a bit fancier.
       mail(
         $recipient,
         "iThenticate report for {$node->field_paper_id[LANGUAGE_NONE][0]['value']}",

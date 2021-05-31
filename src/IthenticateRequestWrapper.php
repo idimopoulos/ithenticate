@@ -80,7 +80,7 @@ class IthenticateRequestWrapper {
       // For CMS. When JMS also upgrades to explicit authors, this should be
       // universal.
       foreach ($node->field_paper_authors[LANGUAGE_NONE] as $item_data) {
-        $author = field_collection_item_load($item_data['item_id']);
+        $author = field_collection_item_load($item_data['value']);
         if (empty($author)) {
           continue;
         }
@@ -111,6 +111,38 @@ class IthenticateRequestWrapper {
   }
 
   /**
+   * Tries to retrieve the report data for the given document.
+   *
+   * @param \Drupal\ithenticate\entities\IthenticateDocument $document
+   *   The document object.
+   */
+  public function getReportData(IthenticateDocument $document) {
+    if ($document->getIthenticateDocumentId()) {
+      $response = $this->service->documentGetRequest($document->getIthenticateDocumentId());
+      if (isset($response['errors'])) {
+        foreach ($response['errors'] as $name => $errors) {
+          drupal_set_message(t('Errors found for element :name: :errors', [
+            ':name' => $name,
+            ':errors' => implode('<br />', $errors),
+          ]), 'error');
+        }
+        return;
+      }
+      $response_document = reset($response['documents']);
+      if ($response_document['is_pending'] === 1) {
+        drupal_set_message('The document is not ready yet.', 'warning');
+      }
+      else {
+        $document->setPercentMatch($response_document['percent_match']);
+        if (empty($document->getIthenticateReportId())) {
+          $this->fetchDocumentReportId($document);
+        }
+        $this->fetchDocumentReportUrl($document);
+      }
+    }
+  }
+
+  /**
    * Checks whether the report for the document has been created.
    *
    * @param int $document_id
@@ -120,12 +152,18 @@ class IthenticateRequestWrapper {
    *   Whether a document report is still being generated or not.
    */
   public function checkIsDocumentReportPending($document_id) {
-    $state = $this->service->fetchDocumentReportState($document_id);
-    if ($state === FALSE) {
-      throw new \RuntimeException('An unknown error occurred when decoding the response for the ' . __METHOD__ . '.');
+    $response = $this->service->documentGetRequest($document_id);
+    if (isset($response['errors'])) {
+      foreach ($response['errors'] as $name => $errors) {
+        drupal_set_message(t('Errors found for element :name: :errors', [
+          ':name' => $name,
+          ':errors' => implode('<br />', $errors),
+        ]), 'error');
+      }
+      return NULL;
     }
 
-    if ($state['is_pending'] == 0) {
+    if ($response['documents'][0]['is_pending'] === 0) {
       return FALSE;
     }
 
@@ -148,7 +186,6 @@ class IthenticateRequestWrapper {
     }
     else {
       $document->setIthenticateReportId($document_report_id);
-      $document->save();
     }
     return $document;
   }
@@ -163,13 +200,12 @@ class IthenticateRequestWrapper {
    *   The updated document.
    */
   public function fetchDocumentReportUrl($document) {
-    $document_report_url = $this->service->fetchDocumentReportUrl($document->getIthenticateReportId());
-    if ($document_report_url === FALSE) {
+    $response = $this->service->reportGetRequest($document->getIthenticateReportId());
+    if (!isset($response['report_url'])) {
       drupal_set_message(t('Failed to retrieve the document URL. Is the report still pending?'), 'error');
     }
     else {
-      $document->setIthenticateReportUrl($document_report_url);
-      $document->save();
+      $document->setIthenticateReportUrl($response['report_url']);
     }
     return $document;
   }

@@ -50,9 +50,27 @@ function ithenticate_schema() {
         'length' => '1024',
         'not null' => FALSE,
       ],
+      'percent_match' => [
+        'description' => 'The match percent for the document.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ],
     ],
     'primary key' => ['entity_type', 'bundle', 'entity_id'],
   ];
 
   return $schema;
+}
+
+/**
+ * Install the percent_match database column.
+ */
+function ithenticate_update_0700(&$sandbox) {
+  db_add_field('ithenticate_documents', 'percent_match', [
+    'description' => 'The match percent for the document.',
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'not null' => FALSE,
+  ]);
 }
