@@ -3,13 +3,21 @@
     "description": "An module that integrates the JMS and CMS systems to the iThenticate service.",
     "type": "drupal-module",
     "require": {
-        "idimopoulos/ithenticate": "*",
+        "idimopoulos/iThenticate-php": "*",
         "phpxmlrpc/phpxmlrpc": "4.0"
     },
     "repositories": [
       {
-        "type": "vcs",
-        "url": "https://github.com/idimopoulos/iThenticate-php",
+        "type": "package",
+        "package": {
+          "name": "idimopoulos/iThenticate-php",
+          "version": "master",
+          "source": {
+            "url": "https://github.com/idimopoulos/iThenticate-php.git",
+            "type": "git",
+            "reference": "master"
+          }
+        }
       }
     ],
     "authors": [
