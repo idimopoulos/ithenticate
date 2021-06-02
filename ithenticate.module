@@ -129,18 +129,10 @@ function ithenticate_portal($form, &$form_state, $node) {
 function ithenticate_portal_submit_document($form, &$form_state) {
   $node = $form_state['#node'];
 
-  $service = new IthenticateRequestWrapper();
-  $document = $service->submitDocument($node);
-  if ($document->getIthenticateDocumentId()) {
-    // If we are here, the document has been submitted and a document ID is set.
-    if ($service->checkIsDocumentReportPending($document->getIthenticateDocumentId())) {
-      drupal_set_message(t('The report is being generated. Please, come back later.'));
-    }
-    else {
-      $service->fetchDocumentReportId($document);
-      $service->fetchDocumentReportUrl($document);
-    }
-  }
+  $service_wrapper = new IthenticateRequestWrapper();
+  $document = $service_wrapper->submitDocument($node);
+  $service_wrapper->getReportData($document);
+  $document->save();
 }
 
 /**
@@ -223,7 +215,7 @@ function ithenticate_cron_queue_info() {
  */
 function ithenticate_report_download_data($document_id) {
   $document = IthenticateDocument::loadByIthenticateDocumentId($document_id);
-  if (!empty($document->getIthenticateReportUrl())) {
+  if (empty($document) || !empty($document->getIthenticateReportUrl())) {
     // It has been updated in the meantime. Nothing to do here.
     return;
   }
@@ -237,11 +229,28 @@ function ithenticate_report_download_data($document_id) {
     $recipient = variable_get('ithenticate_email_recipient', NULL);
     if ($send_email && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
       $node = node_load($document->getEntityId());
-      mail(
-        $recipient,
-        "iThenticate report for {$node->field_paper_id[LANGUAGE_NONE][0]['value']}",
-        "A new iThenticate report has been generated. {$document->getIthenticateReportUrl()}"
-      );
+      drupal_mail('ithenticate', 'report_created', $recipient, LANGUAGE_NONE, [
+        'paper_id' => $node->field_paper_id[LANGUAGE_NONE][0]['value'],
+        'report_url' => $document->getIthenticateReportUrl(),
+        'percent_match' => $document->getPercentMatch(),
+      ]);
     }
   }
+}
+
+/**
+ * Implements hook_mail().
+ */
+function ithenticate_mail($key, &$message, $params) {
+  if ($key !== 'report_created') {
+    return;
+  }
+
+  $message['subject'] = t("iThenticate report for !paper_id", [
+    '!paper_id' => $params['paper_id'],
+  ]);
+  $message['body'][] = t("A new iThenticate report has been generated. Similarity: !percent_match%. !report_url", [
+    '!report_url' => $params['report_url'],
+    '!percent_match' => $params['percent_match'],
+  ]);
 }
