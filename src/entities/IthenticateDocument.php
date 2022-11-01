@@ -340,4 +340,17 @@ class IthenticateDocument {
       ->execute();
   }
 
+  /**
+   * Deletes the data from the database.
+   *
+   * @return int
+   *   The result of the db_delete.
+   */
+  public function delete() {
+    return db_delete('ithenticate_documents')
+      ->condition('entity_type', $this->entityType)
+      ->condition('bundle', $this->bundle)
+      ->condition('entity_id', $this->entityId)
+      ->execute();
+  }
 }

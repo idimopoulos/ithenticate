@@ -46,7 +46,10 @@ function ithenticate_permission() {
     ],
     'access ithenticate portal' => [
       'title' => 'Access the ithenticate page for each allowed node',
-    ]
+    ],
+    'delete ithenticate document' => [
+      'title' => 'Delete iThenticate documents',
+    ],
   ];
 }
 
@@ -77,10 +80,30 @@ function ithenticate_portal($form, &$form_state, $node) {
   $form_state['#node'] = $node;
   $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
 
-  // Shows a form that allows the user to submit a document.
-  $form['help'] = [
+  if (!empty($document->getIthenticateReportUrl())) {
+    $similarity = $document->getPercentMatch();
+    $form['help'] = [
+      '#type' => 'item',
+      '#markup' => t("The report has been created with <strong>:similarity%</strong> similarity. Please, go to <a href='!link' target='_blank'>iThenticate report page</a> for further details.", [
+        '!link' => $document->getIthenticateReportUrl(),
+        ':similarity' => $similarity,
+      ]),
+    ];
+  }
+  else {
+    $form['help'] = [
+      '#type' => 'item',
+      '#markup' => t('There are no records for the given document. Press below to submit for plagiarism check.'),
+    ];
+  }
+
+  $query_title = str_replace(' ', '+', $node->title);
+  $delete_url = "https://app.ithenticate.com/en_us/search?q={$query_title}";
+  $form['delete_url_help'] = [
     '#type' => 'item',
-    '#markup' => t('There are no records for the given document. Press below to submit for plagiarism check.'),
+    '#markup' => t('If there is a record in iThenticate, <a target="_blank" href="@url">click here to search</a>.', [
+      '@url' => $delete_url,
+    ]),
   ];
 
   $form['submit'] = [
@@ -97,17 +120,12 @@ function ithenticate_portal($form, &$form_state, $node) {
     '#submit' => ['ithenticate_portal_fetch_report'],
   ];
 
-  if (!empty($document->getIthenticateReportUrl())) {
-    $similarity = $document->getPercentMatch();
-    $form['help'] = [
-      '#type' => 'item',
-      // '#markup' => "<iframe src='{$document->getIthenticateReportUrl()}'></iframe>'",
-      '#markup' => t("The report has been created with <strong>:similarity%</strong> similarity. Please, go to <a href='!link' target='_blank'>iThenticate report page</a> for further details.", [
-        '!link' => $document->getIthenticateReportUrl(),
-        ':similarity' => $similarity,
-      ]),
-    ];
-  }
+  $form['delete'] = [
+    '#type' => 'submit',
+    '#value' => t('Delete'),
+    '#access' => !empty($document) && user_access('delete ithenticate document'),
+    '#submit' => ['ithenticate_portal_delete'],
+  ];
 
   if (!empty($document)) {
     $form_state['document'] = $document;
@@ -147,6 +165,21 @@ function ithenticate_portal_fetch_report($form, &$form_state) {
   $service_wrapper = new IthenticateRequestWrapper();
   $service_wrapper->getReportData($document);
   $document->save();
+}
+
+/**
+ * Deletes the ithenticate document.
+ *
+ * @param array $form
+ *   The form array.
+ * @param array $form_state
+ *   The form state array.
+ */
+function ithenticate_portal_delete($form, &$form_state) {
+  $node = $form_state['#node'];
+  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
+  $document->delete();
+  drupal_set_message(t('The document has been deleted locally. Please, go to iThenticate to delete it from there.'));
 }
 
 /**
