@@ -76,32 +76,28 @@ function ithenticate_portal($form, &$form_state, $node) {
 
   $form_state['#node'] = $node;
   $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
-  if (empty($document) || empty($document->getIthenticateDocumentId())) {
-    // Shows a form that allows the user to submit a document.
-    $form['help'] = [
-      '#type' => 'item',
-      '#markup' => t('There are no records for the given document. Press below to submit for plagiarism check.'),
-    ];
 
-    $form['submit'] = [
-      '#type' => 'submit',
-      '#value' => t('Submit to iThenticate'),
-      '#submit' => ['ithenticate_portal_submit_document'],
-    ];
-  }
-  elseif (empty($document->getIthenticateReportUrl()) && !empty($document->getIthenticateDocumentId())) {
-    $form['help'] = [
-      '#type' => 'item',
-      '#markup' => t('Click below to try and retrieve the report URL.'),
-    ];
+  // Shows a form that allows the user to submit a document.
+  $form['help'] = [
+    '#type' => 'item',
+    '#markup' => t('There are no records for the given document. Press below to submit for plagiarism check.'),
+  ];
 
-    $form['submit'] = [
-      '#type' => 'submit',
-      '#value' => t('Try to retrieve data'),
-      '#submit' => ['ithenticate_portal_submit_fetch_results_submit'],
-    ];
-  }
-  elseif (!empty($document->getIthenticateReportUrl())) {
+  $form['submit'] = [
+    '#type' => 'submit',
+    '#value' => t('Submit to iThenticate'),
+    '#access' => empty($document),
+    '#submit' => ['ithenticate_portal_submit_document'],
+  ];
+
+  $form['fetch_report'] = [
+    '#type' => 'submit',
+    '#value' => t('Fetch report'),
+    '#access' => !empty($document),
+    '#submit' => ['ithenticate_portal_fetch_report'],
+  ];
+
+  if (!empty($document->getIthenticateReportUrl())) {
     $form['help'] = [
       '#type' => 'item',
       // '#markup' => "<iframe src='{$document->getIthenticateReportUrl()}'></iframe>'",
@@ -131,6 +127,22 @@ function ithenticate_portal_submit_document($form, &$form_state) {
 
   $service_wrapper = new IthenticateRequestWrapper();
   $document = $service_wrapper->submitDocument($node);
+  $service_wrapper->getReportData($document);
+  $document->save();
+}
+
+/**
+ * Fetches the ithenticate data from the portal.
+ *
+ * @param array $form
+ *   The form array.
+ * @param array $form_state
+ *   The form state array.
+ */
+function ithenticate_portal_fetch_report($form, &$form_state) {
+  $node = $form_state['#node'];
+  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
+  $service_wrapper = new IthenticateRequestWrapper();
   $service_wrapper->getReportData($document);
   $document->save();
 }
