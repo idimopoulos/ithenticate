@@ -98,11 +98,13 @@ function ithenticate_portal($form, &$form_state, $node) {
   ];
 
   if (!empty($document->getIthenticateReportUrl())) {
+    $similarity = $document->getPercentMatch();
     $form['help'] = [
       '#type' => 'item',
       // '#markup' => "<iframe src='{$document->getIthenticateReportUrl()}'></iframe>'",
-      '#markup' => t("The report has been created. Please, go to <a href='!link' target='_blank'>iThenticate report page</a> for further details.", [
+      '#markup' => t("The report has been created with <strong>:similarity%</strong> similarity. Please, go to <a href='!link' target='_blank'>iThenticate report page</a> for further details.", [
         '!link' => $document->getIthenticateReportUrl(),
+        ':similarity' => $similarity,
       ]),
     ];
   }
