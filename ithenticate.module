@@ -80,7 +80,7 @@ function ithenticate_portal($form, &$form_state, $node) {
   $form_state['#node'] = $node;
   $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
 
-  if (!empty($document->getIthenticateReportUrl())) {
+  if ($document && $document->getIthenticateReportUrl()) {
     $similarity = $document->getPercentMatch();
     $form['help'] = [
       '#type' => 'item',
