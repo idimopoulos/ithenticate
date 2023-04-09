@@ -57,9 +57,9 @@ class IthenticateRequestWrapper {
    *   The new document that has been saved in the database.
    */
   public function submitDocument($node) {
-    $submission_document = IthenticateDocument::loadByEntityData('node', 'paper', $node->nid);
+    $submission_document = IthenticateDocument::loadByEntityData('node', 'paper', $node->nid, $node->revision_id);
     if (empty($submission_document)) {
-      $submission_document = new IthenticateDocument('node', $node->type, $node->nid);
+      $submission_document = new IthenticateDocument('node', $node->type, $node->nid, $node->revision_id, $node->revision_id);
     }
     if (!empty($submission_document) && !empty($submission_document->getIthenticateDocumentId())) {
       drupal_set_message("Node with ID {$node->nid} seems to already have a submitted document in iThenticate.");

@@ -31,6 +31,13 @@ class IthenticateDocument {
   protected $entityId;
 
   /**
+   * The entity revision ID.
+   *
+   * @var int
+   */
+  protected $revisionId;
+
+  /**
    * The iThenticate document ID.
    *
    * @var int
@@ -67,6 +74,8 @@ class IthenticateDocument {
    *   The entity bundle.
    * @param int|null $entity_id
    *   The entity ID.
+   * @param int|null $revision_id
+   *   The entity revision ID.
    * @param int|null $document_id
    *   The document ID.
    * @param int|null $report_id
@@ -76,10 +85,11 @@ class IthenticateDocument {
    * @param int|null $percent_match
    *   The percent match.
    */
-  public function __construct(string $entity_type = NULL, string $bundle = NULL, int $entity_id = NULL, int $document_id = NULL, int $report_id = NULL, string $report_url = NULL, ?int $percent_match = NULL) {
+  public function __construct(string $entity_type = NULL, string $bundle = NULL, int $entity_id = NULL, int $revision_id = NULL, int $document_id = NULL, int $report_id = NULL, string $report_url = NULL, ?int $percent_match = NULL) {
     $this->entityType = $entity_type;
     $this->bundle = $bundle;
     $this->entityId = $entity_id;
+    $this->revisionId = $revision_id;
     $this->ithenticateDocumentId = $document_id;
     $this->ithenticateReportId = $report_id;
     $this->ithenticateReportUrl = $report_url;
@@ -144,6 +154,26 @@ class IthenticateDocument {
    */
   public function setEntityId(int $entity_id): void {
     $this->entityId = $entity_id;
+  }
+
+  /**
+   * Gets the entity revision ID.
+   *
+   * @return int
+   *   The entity revision ID.
+   */
+  public function getEntityRevisionId(): ?int {
+    return $this->revisionId;
+  }
+
+  /**
+   * Sets the entity revision ID.
+   *
+   * @param int $revisionId
+   *   The entity revision ID.
+   */
+  public function setEntityRevisionId(int $revisionId): void {
+    $this->revisionId = $revisionId;
   }
 
   /**
@@ -241,7 +271,7 @@ class IthenticateDocument {
       return NULL;
     }
 
-    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url, $document->percent_match);
+    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->revision_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url, $document->percent_match);
   }
 
   /**
@@ -259,7 +289,7 @@ class IthenticateDocument {
       return NULL;
     }
 
-    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url, $document->percent_match);
+    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->revision_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url, $document->percent_match);
   }
 
   /**
@@ -271,21 +301,29 @@ class IthenticateDocument {
    *   The entity bundle.
    * @param int $entity_id
    *   The entity ID.
+   * @param int $revision_id
+   *   The entity revision ID.
    *
    * @return \Drupal\ithenticate\entities\IthenticateDocument|null
    *   The loaded object or NULL if none are found.
    */
-  public static function loadByEntityData(string $entity_type, string $bundle, int $entity_id) {
-    $document = self::loadSingleByProperties([
+  public static function loadByEntityData(string $entity_type, string $bundle, int $entity_id, int $revision_id = NULL) {
+    $properties = [
       'entity_type' => $entity_type,
       'bundle' => $bundle,
       'entity_id' => $entity_id,
-    ]);
+    ];
+
+    if (!empty($revision_id)) {
+      $properties['revision_id'] = $revision_id;
+    }
+
+    $document = self::loadSingleByProperties($properties);
     if (empty($document)) {
       return NULL;
     }
 
-    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url, $document->percent_match);
+    return new static($document->entity_type, $document->bundle, $document->entity_id, $document->revision_id, $document->ithenticate_document_id, $document->ithenticate_report_id, $document->ithenticate_report_url, $document->percent_match);
   }
 
   /**
@@ -301,7 +339,7 @@ class IthenticateDocument {
    */
   protected static function loadSingleByProperties(array $properties) {
     $query = db_select('ithenticate_documents', 'i');
-    $query->fields('i', []);
+    $query->fields('i');
     foreach ($properties as $key => $value) {
       $query->condition($key, $value);
     }
@@ -321,8 +359,8 @@ class IthenticateDocument {
       throw new \RuntimeException('Cannot save an iThenticate document without a document ID.');
     }
 
-    if (empty($this->entityType) || empty($this->bundle) || empty($this->entityId)) {
-      throw new \RuntimeException('Cannot save an iThenticate document entity without an entity type, bundle and ID.');
+    if (empty($this->entityType) || empty($this->bundle) || empty($this->entityId) || empty($this->revisionId)) {
+      throw new \RuntimeException('Cannot save an iThenticate document entity without an entity type, bundle, ID and version.');
     }
 
     return db_merge('ithenticate_documents')
@@ -330,6 +368,7 @@ class IthenticateDocument {
         'entity_type' => $this->entityType,
         'bundle' => $this->bundle,
         'entity_id' => $this->entityId,
+        'revision_id' => $this->revisionId,
       ])
       ->fields([
         'ithenticate_document_id' => $this->ithenticateDocumentId,
@@ -351,6 +390,7 @@ class IthenticateDocument {
       ->condition('entity_type', $this->entityType)
       ->condition('bundle', $this->bundle)
       ->condition('entity_id', $this->entityId)
+      ->condition('revision_id', $this->revisionId)
       ->execute();
   }
 }

@@ -78,7 +78,7 @@ function ithenticate_portal($form, &$form_state, $node) {
   _validate_ithenticate_is_configured();
 
   $form_state['#node'] = $node;
-  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
+  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid, $node->revision_id);
 
   if ($document && $document->getIthenticateReportUrl()) {
     $similarity = $document->getPercentMatch();
@@ -161,7 +161,7 @@ function ithenticate_portal_submit_document($form, &$form_state) {
  */
 function ithenticate_portal_fetch_report($form, &$form_state) {
   $node = $form_state['#node'];
-  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
+  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid, $node->revision_id);
   $service_wrapper = new IthenticateRequestWrapper();
   $service_wrapper->getReportData($document);
   $document->save();
@@ -177,7 +177,7 @@ function ithenticate_portal_fetch_report($form, &$form_state) {
  */
 function ithenticate_portal_delete($form, &$form_state) {
   $node = $form_state['#node'];
-  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
+  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid, $node->revision_id);
   $document->delete();
   drupal_set_message(t('The document has been deleted locally. Please, go to iThenticate to delete it from there.'));
 }
@@ -192,7 +192,7 @@ function ithenticate_portal_delete($form, &$form_state) {
  */
 function ithenticate_portal_submit_fetch_results_submit($form, &$form_state) {
   $node = $form_state['#node'];
-  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid);
+  $document = IthenticateDocument::loadByEntityData('node', $node->type, $node->nid, $node->revision_id);
   $service_wrapper = new IthenticateRequestWrapper();
 
   $service_wrapper->getReportData($document);

@@ -32,6 +32,11 @@ function ithenticate_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ],
+      'revision_id' => [
+        'description' => 'The entity version ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ],
       'ithenticate_document_id' => [
         'description' => 'The document ID.',
         'type' => 'int',
@@ -73,4 +78,20 @@ function ithenticate_update_0700(&$sandbox) {
     'unsigned' => TRUE,
     'not null' => FALSE,
   ]);
+}
+
+/**
+ * Install the revision_id database column.
+ */
+function ithenticate_update_0701() {
+  db_add_field('ithenticate_documents', 'revision_id', [
+    'description' => 'The entity version ID.',
+    'type' => 'int',
+    'unsigned' => TRUE,
+  ]);
+
+  // The revision ID should be filled with the `node` table. The `node.nid` is
+  // the same as the `ithenticate_documents.entity_id` and the `node.vid` is the
+  // same as the `ithenticate_documents.revision_id`.
+  db_query("UPDATE {ithenticate_documents} SET revision_id = (SELECT vid FROM {node} WHERE nid = {ithenticate_documents}.entity_id)")->execute();
 }
